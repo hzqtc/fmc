@@ -33,7 +33,10 @@ class FMC(object):
 				title = obj['song']['title'].encode('utf-8')
 				progress = obj['progress']
 				length = obj['song']['length']
-				print '%s - %s: %d / %d' % (artist, title, progress, length)
+				like = obj['song']['like']
+				print '%s%s - %s: %d / %d' % ('[liked] ' if like else '', artist, title, progress, length)
+		else:
+			print res
 
 if __name__ == '__main__':
 	opts, cmd = getopt.getopt(sys.argv[1:], 'a:p:')
