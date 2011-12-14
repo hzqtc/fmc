@@ -6,7 +6,7 @@ import socket
 import getopt
 
 class FMC(object):
-	def __init__(self, addr = 'localhost', port = 10098):
+	def __init__(self, addr, port):
 		self.addr = addr
 		self.port = port
 
@@ -39,14 +39,21 @@ class FMC(object):
 			print res
 
 if __name__ == '__main__':
-	opts, cmd = getopt.getopt(sys.argv[1:], 'a:p:')
+	opts, cmd = getopt.getopt(sys.argv[1:], 'a:p:h')
+	addr = 'localhost'
+	port = 10098
+
+	for k,v in opts:
+		if k == '-h':
+			print 'Usage: %s [-a addr] [-p port] [cmd]' % sys.argv[0]
+			sys.exit(0)
+		elif k == '-a':
+			addr = v
+		elif k == '-p':
+			port = int(v)
+	fmc = FMC(addr, port)
+
 	if cmd:
-		if 'a' not in opts and 'p' not in opts:
-			fmc = FMC()
-		elif 'p' not in opts:
-			fmc = FMC(opts['a'])
-		else:
-			fmc = FMC(opts['a'], opts['p'])
 		fmc.runcmd(cmd[0])
 	else:
-		print 'Usage: %s [-a address] [-p port] [command]' % sys.argv[0]
+		fmc.runcmd('info')
