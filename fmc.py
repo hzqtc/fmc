@@ -31,9 +31,9 @@ class FMC(object):
 			if status == 'playing':
 				artist = obj['song']['artist'].encode('utf-8')
 				title = obj['song']['title'].encode('utf-8')
-				progress = obj['progress']
-				length = obj['song']['length']
 				like = obj['song']['like']
+				progress = obj['progress']
+				length = obj['length']
 				print '%s%s - %s: %d / %d' % ('[liked] ' if like else '', artist, title, progress, length)
 		else:
 			print res
