@@ -24,7 +24,7 @@ class FMC(object):
 		conn.send('bye')
 		conn.close()
 
-		if cmd == 'info':
+		try:
 			obj = json.loads(res)
 			status = obj['status']
 			print 'Status: %s' % status
@@ -35,7 +35,7 @@ class FMC(object):
 				progress = obj['progress']
 				length = obj['length']
 				print '%s%s - %s: %d / %d' % ('[liked] ' if like else '', artist, title, progress, length)
-		else:
+		except:
 			print res
 
 if __name__ == '__main__':
