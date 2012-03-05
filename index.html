@@ -1,0 +1,46 @@
+$def with (result)
+<html>
+<style type="text/css">
+body {background-color:#e9eaee}
+.box {background-color:white; font:20px sans-serif; margin:5pt; padding:10pt; text-align:center;}
+.button {
+	border-top: 1px solid #96d1f8;
+	background: #65a9d7;
+	background: -webkit-gradient(linear, left top, left bottom, from(#3e779d), to(#65a9d7));
+	padding: 6px 6px;
+	border-radius: 8px;
+	box-shadow: rgba(0,0,0,1) 0 1px 0;
+	text-shadow: rgba(0,0,0,.4) 0 1px 0;
+	color: white;
+	font: 20px Georgia, serif;
+	text-decoration: none;
+	vertical-align: middle;
+	}
+</style>
+<head>
+<title>Web FMC</title>
+<meta name="viewport" content="width=device-width, height=device-height" />
+</head>
+<body>
+$if result['status'] == "playing":
+	<div class="box">
+	<img src="$result['song']['cover']"/>
+	<p>$result['song']['title']</p>
+	<p>$result['song']['album']</p>
+	<p>$result['song']['artist']</p>
+	</div>
+	<div class="box">
+	$if result['song']['like']:
+		<a href="unrate" class="button">Dislike</a>
+	$else:
+		<a href="rate" class="button">Like</a>
+	<a href="ban" class="button">Ban</a>
+	<a href="skip" class="button">Skip</a>
+	<a href="stop" class="button">Stop</a>
+	</div>
+$else:
+	<div class="box">
+	<a href="play" class="button">Play</a>
+	</div>
+</body>
+</html>
