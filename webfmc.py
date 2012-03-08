@@ -8,6 +8,7 @@ addr = 'localhost'
 port = 10098
 
 urls = (
+	'/webfmc/static/(.*)', 'Static',
 	'/webfmc/(.*)', 'WebUI',
 	'(.*)', 'Error',
 )
@@ -16,6 +17,15 @@ app = web.application(urls, globals())
 class Error:
 	def GET(self, path):
 		return "Error: Unknown path {0}".format(path)
+
+class Static:
+    def GET(self, file):
+        try:
+            web.header('Cache-Control', 'max-age=2592000')
+            f = open('static/'+file, 'r')
+            return f.read()
+        except:
+            return '' # you can send an 404 error here if you want
 
 class WebUI:
 	def GET(self, cmd):

@@ -1,7 +1,28 @@
 $def with (result)
+$if result['status'] == "playing":
+	$ length = result['length']
+	$ progress = result['progress']
+$else:
+	$ length = 0
+	$ progress = 0
+
 <html>
 <head>
-<link href='http://fonts.googleapis.com/css?family=Exo:100' rel='stylesheet' type='text/css'>
+<script language="JavaScript">
+var songLength = $length
+var progressAtLoad = $progress
+var timeAtLoad = new Date().getTime()
+function reload() {
+	window.location = 'info'
+}
+function progress() {
+	var bar = document.getElementById("progressbar").childNodes[0]
+	var currentProgress = (new Date().getTime() - timeAtLoad)/1000 + progressAtLoad
+	bar.style.width = currentProgress/songLength*100 + '%'
+	if (currentProgress > songLength)
+		reload()
+}
+</script>
 <style type="text/css">
 * {
 	margin: 0;
@@ -12,31 +33,11 @@ body {
 	color: #303030;
 	font-family:"Exo", sans-serif;
 	max-width: 480px;
-	padding-left: 30px;
-	}
-.box {
-	font:20px sans-serif; 
-	margin:5pt; 
-	padding:10pt;
-	text-align:center;
-	clear:both;
-	}
-.button {
-	border-top: 1px solid #96d1f8;
-	background: #65a9d7;
-	background: -webkit-gradient(linear, left top, left bottom, from(#3e779d), to(#65a9d7));
-	padding: 6px 6px;
-	border-radius: 8px;
-	box-shadow: rgba(0,0,0,1) 0 1px 0;
-	text-shadow: rgba(0,0,0,.4) 0 1px 0;
-	color: white;
-	font: 20px Georgia, serif;
-	text-decoration: none;
-	vertical-align: middle;
+	margin-left: 30px;
 	}
 #cover {
 	border: 1px solid #e0e0e0;
-	margin: 5px 0 5px 0;
+	margin-top: 5px;
 	width: 60%;
 	}
 h1 {
@@ -48,35 +49,65 @@ h1 {
 h2 {
 	font-size: 20px;
 	}
-#top {
+#header {
 	background: red;
 	width: 20%;
 	height: 10px;
 	margin-bottom: 5px;
 	}
+#footer {
+	position: fixed;
+	bottom: 10px;
+	left: 30px;
+	right: 10px;
+	}
+.right {
+	float: right;
+	}
+#progressbar {
+	margin: 2px 1px 2px 1px;
+	height: 2px;
+	position: relative;
+	background: #ddd;
+	width: 60%;
+	}
+#progressbar > span {
+	display: block;
+	height: 100%;
+	width: 0;
+	position: relative;
+	background: #555;
+	overflow: hidden;
+	}
 </style>
 <title>Web FMC</title>
 <meta name="viewport" content="width=device-width, height=device-height" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
 </head>
-<body>
-<div id="top">&nbsp;</div>
 $if result['status'] == "playing":
+	<body onload="setInterval('progress()',1000);">
+	<div id="header">&nbsp;</div>
 	<h1>$result['song']['artist']</h1>
 	<h2>$result['song']['album']</h2>
 	<img id="cover" src="$result['song']['cover']"/>
+	<div id="progressbar"><span/></div>
 	<h2>$result['song']['title']</h2>
-	<div class="box">
 	$if result['song']['like']:
-		<a href="unrate" class="button">Dislike</a>
+		<a href="unrate"><img src="static/heart_red.png"/></a>
 	$else:
-		<a href="rate" class="button">Like</a>
-	<a href="ban" class="button">Ban</a>
-	<a href="skip" class="button">Skip</a>
-	<a href="stop" class="button">Stop</a>
+		<a href="rate"><img src="static/heart_gray.png"/></a>
+	<div id="footer">
+	<a href="stop"><img src="static/stop.png"/></a>
+	<a href="skip"><img src="static/ff.png"/></a>
+	<a href="ban"><img src="static/delete.png" class="right"/></a>
 	</div>
 $else:
-	<div class="box">
-	<a href="play" class="button">Play</a>
+	<body>
+	<div id="header">&nbsp;</div>
+	<h1>Web FMC</h1>
+	<div id="footer">
+	<a href="play"><img src="static/play.png"/></a>
 	</div>
 </body>
+<link href='http://fonts.googleapis.com/css?family=Exo:100' rel='stylesheet' type='text/css'>
 </html>
