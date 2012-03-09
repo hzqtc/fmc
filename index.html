@@ -1,0 +1,114 @@
+$def with (result)
+$if result['status'] == "playing":
+	$ length = result['length']
+	$ progress = result['progress']
+$else:
+	$ length = 0
+	$ progress = 0
+
+<html>
+<head>
+<script language="JavaScript">
+var songLength = $length
+var progressAtLoad = $progress
+var timeAtLoad = new Date().getTime()
+function reload() {
+	window.location = 'info'
+}
+function progress() {
+	var bar = document.getElementById("progressbar").childNodes[0]
+	var currentProgress = (new Date().getTime() - timeAtLoad)/1000 + progressAtLoad
+	bar.style.width = currentProgress/songLength*100 + '%'
+	if (currentProgress > songLength)
+		reload()
+}
+</script>
+<link href='http://fonts.googleapis.com/css?family=Exo:500' rel='stylesheet' type='text/css'>
+<style type="text/css">
+* {
+	margin: 0;
+	padding: 0;
+	font-family: 'Exo', sans-serif;
+	font-weight: 500;
+	}
+body {
+	background-color:white; 
+	color: #303030;
+	max-width: 480px;
+	margin-left: 30px;
+	}
+#cover {
+	border: 1px solid #e0e0e0;
+	margin-top: 5px;
+	width: 60%;
+	}
+h1 {
+	font-size: 28px;
+	white-space:nowrap;
+	text-overflow:ellipsis;
+	overflow: hidden;
+	}
+h2 {
+	font-size: 18px;
+	}
+#header {
+	background: red;
+	width: 20%;
+	height: 10px;
+	margin-bottom: 5px;
+	}
+#footer {
+	position: fixed;
+	bottom: 10px;
+	left: 30px;
+	right: 10px;
+	}
+.right {
+	float: right;
+	}
+#progressbar {
+	margin: 2px 1px 2px 1px;
+	height: 2px;
+	position: relative;
+	background: #ddd;
+	width: 60%;
+	}
+#progressbar > span {
+	display: block;
+	height: 100%;
+	width: 0;
+	position: relative;
+	background: #555;
+	overflow: hidden;
+	}
+</style>
+<title>Web FMC</title>
+<meta name="viewport" content="width=device-width, height=device-height" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+</head>
+$if result['status'] == "playing":
+	<body onload="setInterval('progress()',1000);">
+	<div id="header">&nbsp;</div>
+	<h1>$result['song']['artist']</h1>
+	<h2>$result['song']['album']</h2>
+	<img id="cover" src="$result['song']['cover']"/>
+	<div id="progressbar"><span/></div>
+	<h2>$result['song']['title']</h2>
+	$if result['song']['like']:
+		<a href="unrate"><img src="static/heart_red.png"/></a>
+	$else:
+		<a href="rate"><img src="static/heart_gray.png"/></a>
+	<div id="footer">
+	<a href="stop"><img src="static/stop.png"/></a>
+	<a href="skip"><img src="static/ff.png"/></a>
+	<a href="ban"><img src="static/delete.png" class="right"/></a>
+	</div>
+$else:
+	<body>
+	<div id="header">&nbsp;</div>
+	<h1>Web FMC</h1>
+	<div id="footer">
+	<a href="play"><img src="static/play.png"/></a>
+	</div>
+</body>
+</html>

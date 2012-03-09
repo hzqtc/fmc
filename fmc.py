@@ -5,8 +5,12 @@ import json
 import socket
 import getopt
 
+# Default configuration, modify them to map your FMD setting.
+default_addr = 'localhost'
+default_port = 10098
+
 class FMC(object):
-	def __init__(self, addr, port):
+	def __init__(self, addr = default_addr, port = default_port):
 		self.addr = addr
 		self.port = port
 
@@ -25,23 +29,25 @@ class FMC(object):
 		conn.close()
 
 		try:
-			obj = json.loads(res)
-			status = obj['status']
-			print 'Status: %s' % status
-			if status == 'playing':
-				artist = obj['song']['artist'].encode('utf-8')
-				title = obj['song']['title'].encode('utf-8')
-				like = obj['song']['like']
-				progress = obj['progress']
-				length = obj['length']
-				print '%s%s - %s: %d / %d' % ('[liked] ' if like else '', artist, title, progress, length)
+			return json.loads(res)
 		except:
 			print res
 
+def show(result):
+	status = result['status']
+	print 'Status: %s' % status
+	if status == 'playing':
+		artist = result['song']['artist'].encode('utf-8')
+		title = result['song']['title'].encode('utf-8')
+		like = result['song']['like']
+		progress = result['progress']
+		length = result['length']
+		print '%s%s - %s: %d / %d' % ('[liked] ' if like else '', artist, title, progress, length)
+
 if __name__ == '__main__':
 	opts, cmd = getopt.getopt(sys.argv[1:], 'a:p:h')
-	addr = 'localhost'
-	port = 10098
+	addr = default_addr
+	port = default_port
 
 	for k,v in opts:
 		if k == '-h':
@@ -54,6 +60,7 @@ if __name__ == '__main__':
 	fmc = FMC(addr, port)
 
 	if cmd:
-		fmc.runcmd(cmd[0])
+		command = cmd[0]
 	else:
-		fmc.runcmd('info')
+		command = 'info'
+	show(fmc.runcmd(command))
