@@ -3,10 +3,6 @@
 import web
 from fmc import FMC
 
-#TODO: move to configuration file
-addr = 'localhost'
-port = 10098
-
 urls = (
 	'/webfmc/static/(.*)', 'Static',
 	'/webfmc/(.*)', 'WebUI',
@@ -31,7 +27,7 @@ class WebUI:
 	def GET(self, cmd):
 		if cmd == '':
 			cmd = 'info'
-		fmc = FMC(addr, port)
+		fmc = FMC()
 		result = fmc.runcmd(cmd)
 		render = web.template.render('.')
 		return render.index(result)

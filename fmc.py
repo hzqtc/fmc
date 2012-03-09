@@ -5,8 +5,12 @@ import json
 import socket
 import getopt
 
+# Default configuration, modify them to map your FMD setting.
+default_addr = 'localhost'
+default_port = 10098
+
 class FMC(object):
-	def __init__(self, addr, port):
+	def __init__(self, addr = default_addr, port = default_port):
 		self.addr = addr
 		self.port = port
 
@@ -40,11 +44,10 @@ def show(result):
 		length = result['length']
 		print '%s%s - %s: %d / %d' % ('[liked] ' if like else '', artist, title, progress, length)
 
-
 if __name__ == '__main__':
 	opts, cmd = getopt.getopt(sys.argv[1:], 'a:p:h')
-	addr = 'localhost'
-	port = 10098
+	addr = default_addr
+	port = default_port
 
 	for k,v in opts:
 		if k == '-h':
