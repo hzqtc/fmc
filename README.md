@@ -12,9 +12,11 @@ Command: one of "play", "stop", "skip", "ban", "rate", "unrate" and "info".
 
 ## Web UI
 
+Run FMD web based client: 
+
 	python2 webfmc.py [port]
-	
-Run FMD web based client.
+
+Access on web browser by adress `http://<host>:<port>/webfmc/`
 
 Web.py is required to run this web based client. You may also want to install it with lighttpd or Apache, please read [web.py install guide](http://webpy.org/install) for help.
 
