@@ -7,6 +7,13 @@
 #include <string.h>
 #include <errno.h>
 
+void time_str(int time, char *buf)
+{
+    int sec = time % 60;
+    int min = time / 60;
+    sprintf(buf, "%d:%02d", min, sec);
+}
+
 int main(int argc, char *argv[])
 {
     char *addr = "localhost";
@@ -52,16 +59,29 @@ int main(int argc, char *argv[])
         perror("connect");
         return -1;
     }
-    
+
     freeaddrinfo(results);
     
-    char *input_buf = "info";
+    char input_buf[64];
     char output_buf[1024];
     int buf_size;
 
     if (optind < argc) {
-        input_buf = argv[optind];
+        int i;
+        for (i = optind; i < argc; i++) {
+            if (i > optind) {
+                strcat(input_buf, " ");
+                strcat(input_buf, argv[i]);
+            }
+            else {
+                strcpy(input_buf, argv[i]);
+            }
+        }
     }
+    else {
+        strcpy(input_buf, "info");
+    }
+
     send(sock_fd, input_buf, strlen(input_buf), 0);
     buf_size = recv(sock_fd, output_buf, sizeof(output_buf), 0);
     if (buf_size == 0) {
@@ -76,23 +96,23 @@ int main(int argc, char *argv[])
     if (strcmp(status, "error") == 0) {
         printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
     }
-    else if (strcmp(status, "stop") == 0) {
-        printf("[FMD %s] [User: %s] [Channel: %d]\n",
-                status, json_object_get_string(json_object_object_get(obj, "user")),
+    else{
+        printf("FMD %s - Channel %d\n",
+                strcmp(status, "play") == 0? "Playing":
+                (strcmp(status, "pause") == 0? "Paused": "Stopped"),
                 json_object_get_int(json_object_object_get(obj, "channel")));
-    }
-    else {
-        printf("[FMD %s] [User: %s] [Channel: %d]\n[%s - %s] [%s (%d)]\n%s[%d / %d]\n",
-                status, json_object_get_string(json_object_object_get(obj, "user")),
-                json_object_get_int(json_object_object_get(obj, "channel")),
-                json_object_get_string(json_object_object_get(obj, "artist")),
-                json_object_get_string(json_object_object_get(obj, "title")),
-                json_object_get_string(json_object_object_get(obj, "album")),
-                json_object_get_int(json_object_object_get(obj, "year")),
-                json_object_get_int(json_object_object_get(obj, "like"))? "[Like] ": "",
-                json_object_get_int(json_object_object_get(obj, "pos")),
-                json_object_get_int(json_object_object_get(obj, "len"))
-                );
+
+        if (strcmp(status, "stop") != 0) {
+            char pos[16], len[16];
+            time_str(json_object_get_int(json_object_object_get(obj, "pos")), pos);
+            time_str(json_object_get_int(json_object_object_get(obj, "len")), len);
+            printf("%s%s - %s\n%s / %s\n",
+                    json_object_get_int(json_object_object_get(obj, "like"))? "[Like] ": "",
+                    json_object_get_string(json_object_object_get(obj, "artist")),
+                    json_object_get_string(json_object_object_get(obj, "title")),
+                    pos, len
+                  );
+        }
     }
     json_object_put(obj);
 
