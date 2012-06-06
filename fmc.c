@@ -16,7 +16,8 @@ typedef struct {
     char name[32];
 } fm_channel_t;
 
-fm_channel_t channels[128];
+#define channel_max 128
+fm_channel_t channels[channel_max];
 
 void read_channels()
 {
@@ -26,7 +27,7 @@ void read_channels()
     int fd;
     int i;
 
-    for (i = 0; i < 128; i++) {
+    for (i = 0; i < channel_max; i++) {
         channels[i].id = -1;
     }
 
@@ -60,6 +61,36 @@ void read_channels()
         fclose(f);
         read_channels();
     }
+}
+
+void print_channels()
+{
+    int i;
+    printf("%3s %s\n", "id", "name");
+    for (i = 0; i < channel_max; i++) {
+        if (channels[i].id >= 0) {
+            printf("%3d %s\n", channels[i].id, channels[i].name);
+        }
+    }
+}
+
+void print_usage()
+{
+    printf("Usage: fmc [cmd] [argument]\n"
+           "       fmc help       - show this help infomation\n"
+           "       fmc info       - show current fmd information\n"
+           "       fmc play       - start playback\n"
+           "       fmc pause      - pause playback\n"
+           "       fmc toggle     - toggle between play and pause\n"
+           "       fmc stop       - stop playback\n"
+           "       fmc skip       - skip current song\n"
+           "       fmc ban        - don't ever play current song again\n"
+           "       fmc rate       - mark current song as \"liked\"\n"
+           "       fmc unrate     - unmark current song\n"
+           "       fmc channels   - list all FM channels\n"
+           "       fmc setch <id> - set channel through channel's id\n"
+           "       fmc end        - tell fmd to quit\n"
+          );
 }
 
 void time_str(int time, char *buf)
@@ -133,6 +164,15 @@ int main(int argc, char *argv[])
     }
     else {
         strcpy(input_buf, "info");
+    }
+
+    if (strcmp(input_buf, "channels") == 0) {
+        print_channels();
+        return 0;
+    }
+    else if (strcmp(input_buf, "help") == 0) {
+        print_usage();
+        return 0;
     }
 
     send(sock_fd, input_buf, strlen(input_buf), 0);
