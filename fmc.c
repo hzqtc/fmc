@@ -1,4 +1,6 @@
+#include <curl/curl.h>
 #include <json/json.h>
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -18,7 +20,7 @@ fm_channel_t channels[128];
 
 void read_channels()
 {
-    const char *file = "channels";
+    const char *file = "/tmp/fm_channels";
     char buf[4096];
     size_t size;
     int fd;
@@ -47,6 +49,16 @@ void read_channels()
             json_object_put(obj);
         }
         close(fd);
+    }
+    else {
+        FILE *f = fopen(file, "w");
+        CURL *curl = curl_easy_init();
+        curl_easy_setopt(curl, CURLOPT_URL, "http://www.douban.com/j/app/radio/channels");
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, f);
+        curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+        fclose(f);
+        read_channels();
     }
 }
 
