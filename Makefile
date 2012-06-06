@@ -19,4 +19,4 @@ fmc: ${OBJ}
 	gcc ${CFLAGS} -c $<
 
 clean:
-	-rm fmc *.o
+	-rm *.o
