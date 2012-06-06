@@ -1,11 +1,54 @@
 #include <json/json.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+
+typedef struct {
+    int id;
+    char name[32];
+} fm_channel_t;
+
+fm_channel_t channels[128];
+
+void read_channels()
+{
+    const char *file = "channels";
+    char buf[4096];
+    size_t size;
+    int fd;
+    int i;
+
+    for (i = 0; i < 128; i++) {
+        channels[i].id = -1;
+    }
+
+    fd = open(file, O_RDONLY);
+    if (fd >= 0) {
+        memset(buf, 0, sizeof(buf));
+        size = read(fd, buf, sizeof(buf));
+        if (size > 0) {
+            json_object *obj = json_tokener_parse(buf);
+            array_list *channel_objs = json_object_get_array(json_object_object_get(obj, "channels"));
+
+            for (i = 0; i < array_list_length(channel_objs); i++) {
+                json_object *o = (json_object*) array_list_get_idx(channel_objs, i);
+                int id = json_object_get_int(json_object_object_get(o, "channel_id"));
+                const char *name = json_object_get_string(json_object_object_get(o, "name"));
+                channels[id].id = id;
+                strcpy(channels[id].name, name);
+            }
+
+            json_object_put(obj);
+        }
+        close(fd);
+    }
+}
 
 void time_str(int time, char *buf)
 {
@@ -61,21 +104,19 @@ int main(int argc, char *argv[])
     }
 
     freeaddrinfo(results);
+
+    read_channels();
     
     char input_buf[64];
     char output_buf[1024];
     int buf_size;
 
     if (optind < argc) {
+        strcpy(input_buf, argv[optind]);
         int i;
-        for (i = optind; i < argc; i++) {
-            if (i > optind) {
-                strcat(input_buf, " ");
-                strcat(input_buf, argv[i]);
-            }
-            else {
-                strcpy(input_buf, argv[i]);
-            }
+        for (i = optind + 1; i < argc; i++) {
+            strcat(input_buf, " ");
+            strcat(input_buf, argv[i]);
         }
     }
     else {
@@ -97,10 +138,14 @@ int main(int argc, char *argv[])
         printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
     }
     else{
-        printf("FMD %s - Channel %d\n",
-                strcmp(status, "play") == 0? "Playing":
-                (strcmp(status, "pause") == 0? "Paused": "Stopped"),
-                json_object_get_int(json_object_object_get(obj, "channel")));
+        printf("FMD %s - ", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"));
+        int c_id = json_object_get_int(json_object_object_get(obj, "channel"));
+        if (channels[c_id].id < 0) {
+            printf("Channel %d\n", c_id);
+        }
+        else {
+            printf("%s\n", channels[c_id].name);
+        }
 
         if (strcmp(status, "stop") != 0) {
             char pos[16], len[16];
@@ -109,9 +154,7 @@ int main(int argc, char *argv[])
             printf("%s%s - %s\n%s / %s\n",
                     json_object_get_int(json_object_object_get(obj, "like"))? "[Like] ": "",
                     json_object_get_string(json_object_object_get(obj, "artist")),
-                    json_object_get_string(json_object_object_get(obj, "title")),
-                    pos, len
-                  );
+                    json_object_get_string(json_object_object_get(obj, "title")), pos, len);
         }
     }
     json_object_put(obj);
