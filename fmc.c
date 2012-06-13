@@ -192,7 +192,10 @@ int main(int argc, char *argv[])
     else{
         printf("FMD %s - ", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"));
         int c_id = json_object_get_int(json_object_object_get(obj, "channel"));
-        if (channels[c_id].id < 0) {
+        if (c_id == -3) {
+            printf("红心兆赫\n");
+        }
+        else if (c_id < 0 || c_id >= channel_max || channels[c_id].id < 0) {
             printf("Channel %d\n", c_id);
         }
         else {
