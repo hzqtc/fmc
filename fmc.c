@@ -190,14 +190,14 @@ int main(int argc, char *argv[])
     if (strcmp(status, "error") == 0) {
         printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
     }
-    else{
+    else {
         printf("FMD %s - ", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"));
         int c_id = json_object_get_int(json_object_object_get(obj, "channel"));
         if (c_id == -3) {
             printf("红心兆赫\n");
         }
         else if (c_id < 0 || c_id >= channel_max || channels[c_id].id < 0) {
-            printf("Channel %d\n", c_id);
+            printf("未知兆赫\n");
         }
         else {
             printf("%s\n", channels[c_id].name);
