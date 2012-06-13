@@ -67,6 +67,7 @@ void print_channels()
 {
     int i;
     printf("%3s %s\n", "id", "name");
+    printf("%3s %s\n", "-3", "红心兆赫");
     for (i = 0; i < channel_max; i++) {
         if (channels[i].id >= 0) {
             printf("%3d %s\n", channels[i].id, channels[i].name);
