@@ -103,6 +103,8 @@ void time_str(int time, char *buf)
 
 int main(int argc, char *argv[])
 {
+    read_channels();
+
     char *addr = "localhost";
     char *port = "10098";
     int c;
@@ -118,6 +120,31 @@ int main(int argc, char *argv[])
             default:
                 break;
         }
+    }
+
+    char input_buf[64];
+    char output_buf[1024];
+    int buf_size;
+
+    if (optind < argc) {
+        strcpy(input_buf, argv[optind]);
+        int i;
+        for (i = optind + 1; i < argc; i++) {
+            strcat(input_buf, " ");
+            strcat(input_buf, argv[i]);
+        }
+    }
+    else {
+        strcpy(input_buf, "info");
+    }
+
+    if (strcmp(input_buf, "channels") == 0) {
+        print_channels();
+        return 0;
+    }
+    else if (strcmp(input_buf, "help") == 0) {
+        print_usage();
+        return 0;
     }
 
     struct addrinfo hints, *results, *p;
@@ -148,33 +175,6 @@ int main(int argc, char *argv[])
     }
 
     freeaddrinfo(results);
-
-    read_channels();
-    
-    char input_buf[64];
-    char output_buf[1024];
-    int buf_size;
-
-    if (optind < argc) {
-        strcpy(input_buf, argv[optind]);
-        int i;
-        for (i = optind + 1; i < argc; i++) {
-            strcat(input_buf, " ");
-            strcat(input_buf, argv[i]);
-        }
-    }
-    else {
-        strcpy(input_buf, "info");
-    }
-
-    if (strcmp(input_buf, "channels") == 0) {
-        print_channels();
-        return 0;
-    }
-    else if (strcmp(input_buf, "help") == 0) {
-        print_usage();
-        return 0;
-    }
 
     send(sock_fd, input_buf, strlen(input_buf), 0);
     buf_size = recv(sock_fd, output_buf, sizeof(output_buf), 0);
