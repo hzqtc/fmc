@@ -39,15 +39,15 @@ void read_channels()
             json_object *obj = json_tokener_parse(buf);
             if (obj) {
                 array_list *channel_objs = json_object_get_array(json_object_object_get(obj, "channels"));
-
-                for (i = 0; i < array_list_length(channel_objs); i++) {
-                    json_object *o = (json_object*) array_list_get_idx(channel_objs, i);
-                    int id = json_object_get_int(json_object_object_get(o, "channel_id"));
-                    const char *name = json_object_get_string(json_object_object_get(o, "name"));
-                    channels[id].id = id;
-                    strcpy(channels[id].name, name);
+                if (channel_objs) {
+                    for (i = 0; i < array_list_length(channel_objs); i++) {
+                        json_object *o = (json_object*) array_list_get_idx(channel_objs, i);
+                        int id = json_object_get_int(json_object_object_get(o, "channel_id"));
+                        const char *name = json_object_get_string(json_object_object_get(o, "name"));
+                        channels[id].id = id;
+                        strcpy(channels[id].name, name);
+                    }
                 }
-
                 json_object_put(obj);
             }
         }
@@ -56,7 +56,7 @@ void read_channels()
     else {
         FILE *f = fopen(file, "w");
         CURL *curl = curl_easy_init();
-        curl_easy_setopt(curl, CURLOPT_URL, "http://www.douban.com/j/app/radio/channels");
+        curl_easy_setopt(curl, CURLOPT_URL, "http://www.douban.com/j/app/radio/channels?app_name=radio_desktop_win&version=100");
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, f);
         curl_easy_perform(curl);
         curl_easy_cleanup(curl);
