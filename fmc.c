@@ -37,17 +37,19 @@ void read_channels()
         size = read(fd, buf, sizeof(buf));
         if (size > 0) {
             json_object *obj = json_tokener_parse(buf);
-            array_list *channel_objs = json_object_get_array(json_object_object_get(obj, "channels"));
+            if (obj) {
+                array_list *channel_objs = json_object_get_array(json_object_object_get(obj, "channels"));
 
-            for (i = 0; i < array_list_length(channel_objs); i++) {
-                json_object *o = (json_object*) array_list_get_idx(channel_objs, i);
-                int id = json_object_get_int(json_object_object_get(o, "channel_id"));
-                const char *name = json_object_get_string(json_object_object_get(o, "name"));
-                channels[id].id = id;
-                strcpy(channels[id].name, name);
+                for (i = 0; i < array_list_length(channel_objs); i++) {
+                    json_object *o = (json_object*) array_list_get_idx(channel_objs, i);
+                    int id = json_object_get_int(json_object_object_get(o, "channel_id"));
+                    const char *name = json_object_get_string(json_object_object_get(o, "name"));
+                    channels[id].id = id;
+                    strcpy(channels[id].name, name);
+                }
+
+                json_object_put(obj);
             }
-
-            json_object_put(obj);
         }
         close(fd);
     }
