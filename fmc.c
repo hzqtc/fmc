@@ -78,20 +78,31 @@ void print_channels()
 
 void print_usage()
 {
-    printf("Usage: fmc [cmd] [argument]\n"
-           "       fmc help       - show this help infomation\n"
-           "       fmc info       - show current fmd information\n"
-           "       fmc play       - start playback\n"
-           "       fmc pause      - pause playback\n"
-           "       fmc toggle     - toggle between play and pause\n"
-           "       fmc stop       - stop playback\n"
-           "       fmc skip       - skip current song\n"
-           "       fmc ban        - don't ever play current song again\n"
-           "       fmc rate       - mark current song as \"liked\"\n"
-           "       fmc unrate     - unmark current song\n"
-           "       fmc channels   - list all FM channels\n"
-           "       fmc setch <id> - set channel through channel's id\n"
-           "       fmc end        - tell fmd to quit\n"
+    printf("Usage: fmc [-a address] [-p port] [cmd] [argument]\n"
+           "       fmc help          - show this help infomation\n"
+           "       fmc info [format] - show current fmd information\n"
+           "                           if the format argument is given, the following specifier will be replaced accordingly\n"
+           "                           %%a -- artist \n"
+           "                           %%t -- song title \n"
+           "                           %%c -- channel \n"
+           "                           %%p -- currtime \n"
+           "                           %%l -- totaltime \n"
+           "                           %%u -- status \n"
+           "                           %%k -- kbps \n"
+           "                           %%r -- rate (0 or 1) \n"
+           "       fmc play          - start playback\n"
+           "       fmc pause         - pause playback\n"
+           "       fmc toggle        - toggle between play and pause\n"
+           "       fmc stop          - stop playback\n"
+           "       fmc skip/next     - skip current song\n"
+           "       fmc ban           - don't ever play current song again\n"
+           "       fmc rate          - mark current song as \"liked\"\n"
+           "       fmc unrate        - unmark current song\n"
+           "       fmc channels      - list all FM channels\n"
+           "       fmc setch <id>    - set channel through channel's id\n"
+           "       fmc kbps <kbps>   - set music quality to the specified kbps\n"
+           "       fmc launch        - tell fmd to restart\n"
+           "       fmc end           - tell fmd to quit\n"
           );
 }
 
@@ -124,19 +135,22 @@ int main(int argc, char *argv[])
     }
 
     char input_buf[64];
+    char output_format[512] = "";
     char output_buf[1024];
     int buf_size;
 
     if (optind < argc) {
         strcpy(input_buf, argv[optind]);
         int i;
+        char *buf = strcmp(input_buf, "info") == 0 ? output_format : input_buf;
         for (i = optind + 1; i < argc; i++) {
-            strcat(input_buf, " ");
-            strcat(input_buf, argv[i]);
+            strcat(buf, " ");
+            strcat(buf, argv[i]);
         }
     }
     else {
         strcpy(input_buf, "info");
+
     }
 
     if (strcmp(input_buf, "channels") == 0) {
@@ -145,6 +159,13 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(input_buf, "help") == 0) {
         print_usage();
+        return 0;
+    }
+    else if (strcmp(input_buf, "launch") == 0) {
+        // forcefully restart fmd
+        system("killall fmd;"
+               "sleep 1;"
+               "fmd;");
         return 0;
     }
 
@@ -187,29 +208,72 @@ int main(int argc, char *argv[])
     close(sock_fd);
 
     json_object *obj = json_tokener_parse(output_buf);
-    const char *status = json_object_get_string(json_object_object_get(obj, "status"));
-    if (strcmp(status, "error") == 0) {
-        printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
-    }
-    else {
-        printf("FMD %s - ", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"));
+    char *status = strdup(json_object_get_string(json_object_object_get(obj, "status")));
+    char *channel = "", *artist = "", *title = "", pos[16] = "", len[16] = "", kbps[8] = "";
+    char *like = "";
+    if (strcmp(status, "error") != 0) {
         int c_id = json_object_get_int(json_object_object_get(obj, "channel"));
         if (c_id < 0 || c_id >= channel_max || channels[c_id].id < 0) {
-            printf("未知兆赫\n");
+            channel = "未知兆赫";
         }
         else {
-            printf("%s\n", channels[c_id].name);
+            channel = channels[c_id].name;
         }
-
+        sprintf(kbps, "%d", json_object_get_int(json_object_object_get(obj, "kbps")));
         if (strcmp(status, "stop") != 0) {
-            char pos[16], len[16];
             time_str(json_object_get_int(json_object_object_get(obj, "pos")), pos);
             time_str(json_object_get_int(json_object_object_get(obj, "len")), len);
-            printf("%s%s - %s\n%s / %s\n",
-                    json_object_get_int(json_object_object_get(obj, "like"))? "[Like] ": "",
-                    json_object_get_string(json_object_object_get(obj, "artist")),
-                    json_object_get_string(json_object_object_get(obj, "title")), pos, len);
+            like = json_object_get_int(json_object_object_get(obj, "like")) ? "1" : "0";
+            artist = strdup(json_object_get_string(json_object_object_get(obj, "artist")));
+            title = strdup(json_object_get_string(json_object_object_get(obj, "title")));
         }
+    }
+
+    if (output_format[0] == '\0') {
+        if (strcmp(status, "error") == 0) {
+            printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
+        } else {
+            printf("FMD %s - %s / %s kbps\n", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"), channel, kbps);
+
+            if (strcmp(status, "stop") != 0) {
+                printf("%s%s - %s\n%s / %s\n", 
+                        like[0] == '1' ? "[Like] ": "", artist, title, 
+                        pos, len);
+            }
+        }
+    } else {
+        char info[1024], *arg = "";
+        int l = strlen(output_format) + 1;
+        // we must print out the information the user wants
+        // trim the space in front 
+        int i = 1, pi = 0;
+        while ( i < l) {
+            char ch = output_format[i++];
+            if (i < l - 1 && ch == '%') {
+                char spec = output_format[i++];
+                switch (spec) {
+                    case 'a': arg = artist; break;
+                    case 't': arg = title; break;
+                    case 'c': arg = channel; break;
+                    case 'p': arg = pos; break;
+                    case 'l': arg = len; break;
+                    case 'u': arg = status; break;
+                    case 'k': arg = kbps; break;
+                    case 'r': arg = like; break;
+                    case '%': arg = "%%"; break;
+                    default: 
+                        printf("Unknown specifier %c. Try help\n", spec);
+                        return 1;
+                }
+                // loop through the arg and copy the chars
+                while (*arg != '\0') {
+                    info[pi++] = *arg;
+                    arg++;
+                }
+            } else 
+                info[pi++] = ch;
+        }
+        printf(info);
     }
     json_object_put(obj);
 
