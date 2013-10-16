@@ -50,4 +50,4 @@ A script demonstrating the use of the new `info` command can be found [here](fmc
 
 I'm a XMonad/Dzen2 guy and here's my music status bar (for the curious)
 
-    ![](screenshots/bar.png)
+![](screenshots/bar.png)
