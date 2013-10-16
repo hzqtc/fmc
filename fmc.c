@@ -104,6 +104,7 @@ void print_usage()
            "                           %%u -- status \n"
            "                           %%k -- kbps \n"
            "                           %%r -- rate (0 or 1) \n"
+           "                           %%%% -- a literal %% \n"
            "       fmc play          - start playback\n"
            "       fmc pause         - pause playback\n"
            "       fmc toggle        - toggle between play and pause\n"
@@ -221,8 +222,9 @@ int main(int argc, char *argv[])
     close(sock_fd);
 
     json_object *obj = json_tokener_parse(output_buf);
-    char *status = strdup(json_object_get_string(json_object_object_get(obj, "status")));
-    char *channel = "", *artist = "", *title = "", pos[16] = "", len[16] = "", kbps[8] = "", *album = "", *cover = "", year[8] = "", *douban_url = "", *like = "";
+    char *status = obj ? strdup(json_object_get_string(json_object_object_get(obj, "status"))) : "error", 
+         *channel = "", *artist = "", *title = "", pos[16] = "", len[16] = "", kbps[8] = "", *album = "", *cover = "", year[8] = "", *douban_url = "", *like = "";
+
     if (strcmp(status, "error") != 0) {
         int c_id = json_object_get_int(json_object_object_get(obj, "channel"));
         if (c_id == local_channel) {
@@ -250,7 +252,7 @@ int main(int argc, char *argv[])
 
     if (output_format[0] == '\0') {
         if (strcmp(status, "error") == 0) {
-            printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
+            printf("%s\n", obj ? json_object_get_string(json_object_object_get(obj, "message")) : "Unknown error");
         } else {
             printf("FMD %s - %s / %s kbps\n", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"), channel, kbps);
 
