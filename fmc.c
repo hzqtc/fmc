@@ -252,7 +252,10 @@ int main(int argc, char *argv[])
 
     if (output_format[0] == '\0') {
         if (strcmp(status, "error") == 0) {
-            printf("%s\n", obj ? json_object_get_string(json_object_object_get(obj, "message")) : "Unknown error");
+            if (obj)
+                printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
+            else
+                printf("Unkown error with buf content %s\n", output_buf);
         } else {
             printf("FMD %s - %s / %s kbps\n", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"), channel, kbps);
 
