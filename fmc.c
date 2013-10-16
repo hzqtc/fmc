@@ -17,6 +17,7 @@ typedef struct {
 } fm_channel_t;
 
 #define channel_max 128
+#define local_channel 999
 fm_channel_t channels[channel_max];
 
 void read_channels()
@@ -65,10 +66,19 @@ void read_channels()
     }
 }
 
+char *get_local_channel_name() {
+    char *login = "";
+    login = getlogin();
+    if (!login)
+        login = "Red-Heart";
+    return login;
+}
+
 void print_channels()
 {
     int i;
     printf("%3s %s\n", "id", "name");
+    printf("%3d %s\n", local_channel, get_local_channel_name());
     for (i = 0; i < channel_max; i++) {
         if (channels[i].id >= 0) {
             printf("%3d %s\n", channels[i].id, channels[i].name);
@@ -84,6 +94,10 @@ void print_usage()
            "                           if the format argument is given, the following specifier will be replaced accordingly\n"
            "                           %%a -- artist \n"
            "                           %%t -- song title \n"
+           "                           %%b -- album \n"
+           "                           %%y -- release year \n"
+           "                           %%i -- cover image \n"
+           "                           %%d -- douban url \n"
            "                           %%c -- channel \n"
            "                           %%p -- currtime \n"
            "                           %%l -- totaltime \n"
@@ -99,6 +113,7 @@ void print_usage()
            "       fmc rate          - mark current song as \"liked\"\n"
            "       fmc unrate        - unmark current song\n"
            "       fmc channels      - list all FM channels\n"
+           "       fmc website       - open the douban page using the browser defined in $BROWSER\n"
            "       fmc setch <id>    - set channel through channel's id\n"
            "       fmc kbps <kbps>   - set music quality to the specified kbps\n"
            "       fmc launch        - tell fmd to restart\n"
@@ -134,9 +149,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    char input_buf[64];
+    char input_buf[64] = "";
     char output_format[512] = "";
-    char output_buf[1024];
+    char output_buf[1024] = "";
     int buf_size;
 
     if (optind < argc) {
@@ -147,10 +162,8 @@ int main(int argc, char *argv[])
             strcat(buf, " ");
             strcat(buf, argv[i]);
         }
-    }
-    else {
+    } else {
         strcpy(input_buf, "info");
-
     }
 
     if (strcmp(input_buf, "channels") == 0) {
@@ -167,7 +180,7 @@ int main(int argc, char *argv[])
                "sleep 1;"
                "fmd;");
         return 0;
-    }
+    } 
 
     struct addrinfo hints, *results, *p;
     int sock_fd;
@@ -209,11 +222,13 @@ int main(int argc, char *argv[])
 
     json_object *obj = json_tokener_parse(output_buf);
     char *status = strdup(json_object_get_string(json_object_object_get(obj, "status")));
-    char *channel = "", *artist = "", *title = "", pos[16] = "", len[16] = "", kbps[8] = "";
-    char *like = "";
+    char *channel = "", *artist = "", *title = "", pos[16] = "", len[16] = "", kbps[8] = "", *album = "", *cover = "", year[8] = "", *douban_url = "", *like = "";
     if (strcmp(status, "error") != 0) {
         int c_id = json_object_get_int(json_object_object_get(obj, "channel"));
-        if (c_id < 0 || c_id >= channel_max || channels[c_id].id < 0) {
+        if (c_id == local_channel) {
+            channel = get_local_channel_name();
+        }
+        else if (c_id < 0 || c_id >= channel_max || channels[c_id].id < 0) {
             channel = "未知兆赫";
         }
         else {
@@ -226,6 +241,10 @@ int main(int argc, char *argv[])
             like = json_object_get_int(json_object_object_get(obj, "like")) ? "1" : "0";
             artist = strdup(json_object_get_string(json_object_object_get(obj, "artist")));
             title = strdup(json_object_get_string(json_object_object_get(obj, "title")));
+            album = strdup(json_object_get_string(json_object_object_get(obj, "album")));
+            sprintf(year, "%d", json_object_get_int(json_object_object_get(obj, "year")));
+            cover = strdup(json_object_get_string(json_object_object_get(obj, "cover")));
+            douban_url = strdup(json_object_get_string(json_object_object_get(obj, "url")));
         }
     }
 
@@ -254,6 +273,10 @@ int main(int argc, char *argv[])
                 switch (spec) {
                     case 'a': arg = artist; break;
                     case 't': arg = title; break;
+                    case 'b': arg = album; break;
+                    case 'y': arg = year; break;
+                    case 'i': arg = cover; break;
+                    case 'd': arg = douban_url; break;
                     case 'c': arg = channel; break;
                     case 'p': arg = pos; break;
                     case 'l': arg = len; break;
