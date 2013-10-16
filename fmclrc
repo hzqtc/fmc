@@ -1,0 +1,81 @@
+#!/bin/bash
+# Show lyric when playing music with fmd
+
+##########################
+# Lyric dir
+LYRIC="$HOME/.lyrics"
+
+UPDATE_INTERVAL_DEFAULT=0.3 
+UPDATE_INTERVAL_ERROR=1
+
+# search for the lyrics in lrc123.com using the specified keywords
+searchLrc() {
+    curl -sG --connect-timeout 15 -m 60 --data-urlencode "keyword=$1" "http://www.lrc123.com/" | grep -B1 '下载' | grep color | sed -n '1p' | sed 's/<[^>]*>//g;s/[[:space:]]//g'
+}
+
+UPDATE_INTERVAL="$UPDATE_INTERVAL_DEFAULT"
+GREPOPT=
+LSEP='; '
+
+# get the options
+while getopts "l:" OPTION; do
+    case $OPTION in
+        l)
+            GREPOPT='-A 1'
+            LSEP="$OPTARG"
+            ;;
+    esac
+done
+
+while :; do
+    # batch obtain the information regarding the player
+    output="`fmc info $'%u\t%t\t%a\t%p'`"
+    STATUS="`cut -d$'\t' -f1 <<< "$output"`"
+    SONG="`cut -d$'\t' -f2 <<< "$output"`"
+    ARTIST="`cut -d$'\t' -f3 <<< "$output"`"
+    TIME="`cut -d$'\t' -f4 <<< "$output"`"
+    # LRC file
+    # have to replace the 
+    FILE="$LYRIC/${ARTIST//\//|}/${SONG//\//|}.lrc"
+    case "$STATUS" in
+        play)
+            # update the lyrics then
+            # check if song has changed
+            if [ -n "$SONG" ]; then
+                if [ "$SONG_PREV" != "$SONG" ]; then
+                    SONG_PREV="$SONG"
+                    # we've switched to a new song
+                    echo "===== $SONG - $ARTIST =====";
+                    if ! [ -f "$FILE" ]; then
+                        URL="`searchLrc "$SONG ${ARTIST//\// }"`"
+                        #URL="${URL:-"`searchLrc "$SONG"`"}"
+                        
+                        if [ -z "$URL" ]; then
+                            # cannot obtain lyrics with the two methods
+                            echo "===== No Lyrics =====" # &&  exit 1
+                            UPDATE_INTERVAL="$UPDATE_INTERVAL_ERROR"
+                        else
+                            # make directory
+                            mkdir -p "`dirname "$FILE"`"
+                            # download the lyrics
+                            curl --connect-timeout 15 -m 60 -s "$URL" | iconv -f GBK > "$FILE"
+                            UPDATE_INTERVAL="$UPDATE_INTERVAL_DEFAULT"
+                        fi
+                    fi
+                elif [ -f "$FILE" ]; then
+                    # the song hasn't changed; just needs to show the one line of text associated with the current time of the music
+                    TEXT="`[ -f "$FILE" ] && cat "$FILE" | grep -m 1 $GREPOPT "$TIME" | sed 's/\[[^]]*]//g ; s/\\r//'`"
+                    TEXT="${TEXT//$'\n'/$LSEP}"
+                    if [ -n "$TEXT" ] && [ "$TEXT" != "$TEXT_PREV" ]; then
+                        TEXT_PREV="$TEXT"
+                        echo "$TEXT"
+                    fi
+                fi
+            fi
+            ;;
+        *)
+            UPDATE_INTERVAL="$UPDATE_INTERVAL_ERROR"
+            ;;
+    esac
+    sleep "$UPDATE_INTERVAL"
+done
