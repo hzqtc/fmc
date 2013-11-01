@@ -17,6 +17,7 @@ typedef struct {
 } fm_channel_t;
 
 #define channel_max 128
+#define local_channel "999"
 fm_channel_t channels[channel_max];
 
 void read_channels()
@@ -65,10 +66,18 @@ void read_channels()
     }
 }
 
+char *get_local_channel_name() {
+    char *login = getlogin();
+    if (!login)
+        login = "Red-Heart";
+    return login;
+}
+
 void print_channels()
 {
     int i;
     printf("%3s %s\n", "id", "name");
+    printf("%s %s\n", local_channel, get_local_channel_name());
     for (i = 0; i < channel_max; i++) {
         if (channels[i].id >= 0) {
             printf("%3d %s\n", channels[i].id, channels[i].name);
@@ -78,20 +87,37 @@ void print_channels()
 
 void print_usage()
 {
-    printf("Usage: fmc [cmd] [argument]\n"
-           "       fmc help       - show this help infomation\n"
-           "       fmc info       - show current fmd information\n"
-           "       fmc play       - start playback\n"
-           "       fmc pause      - pause playback\n"
-           "       fmc toggle     - toggle between play and pause\n"
-           "       fmc stop       - stop playback\n"
-           "       fmc skip       - skip current song\n"
-           "       fmc ban        - don't ever play current song again\n"
-           "       fmc rate       - mark current song as \"liked\"\n"
-           "       fmc unrate     - unmark current song\n"
-           "       fmc channels   - list all FM channels\n"
-           "       fmc setch <id> - set channel through channel's id\n"
-           "       fmc end        - tell fmd to quit\n"
+    printf("Usage: fmc [-a address] [-p port] [cmd] [argument]\n"
+           "       fmc help          - show this help infomation\n"
+           "       fmc info [format] - show current fmd information\n"
+           "                           if the format argument is given, the following specifier will be replaced accordingly\n"
+           "                           %%a -- artist \n"
+           "                           %%t -- song title \n"
+           "                           %%b -- album \n"
+           "                           %%y -- release year \n"
+           "                           %%i -- cover image \n"
+           "                           %%d -- douban url \n"
+           "                           %%c -- channel \n"
+           "                           %%p -- currtime \n"
+           "                           %%l -- totaltime \n"
+           "                           %%u -- status \n"
+           "                           %%k -- kbps \n"
+           "                           %%r -- rate (0 or 1) \n"
+           "                           %%%% -- a literal %% \n"
+           "       fmc play          - start playback\n"
+           "       fmc pause         - pause playback\n"
+           "       fmc toggle        - toggle between play and pause\n"
+           "       fmc stop          - stop playback\n"
+           "       fmc skip/next     - skip current song\n"
+           "       fmc ban           - don't ever play current song again\n"
+           "       fmc rate          - mark current song as \"liked\"\n"
+           "       fmc unrate        - unmark current song\n"
+           "       fmc channels      - list all FM channels\n"
+           "       fmc webpage       - open the douban page using the browser defined in $BROWSER\n"
+           "       fmc setch <id>    - set channel through channel's id\n"
+           "       fmc kbps <kbps>   - set music quality to the specified kbps\n"
+           "       fmc launch        - tell fmd to restart\n"
+           "       fmc end           - tell fmd to quit\n"
           );
 }
 
@@ -123,19 +149,20 @@ int main(int argc, char *argv[])
         }
     }
 
-    char input_buf[64];
-    char output_buf[1024];
+    char input_buf[64] = "";
+    char output_format[512] = "";
+    char output_buf[1024] = "";
     int buf_size;
 
     if (optind < argc) {
         strcpy(input_buf, argv[optind]);
         int i;
+        char *buf = strcmp(input_buf, "info") == 0 ? output_format : input_buf;
         for (i = optind + 1; i < argc; i++) {
-            strcat(input_buf, " ");
-            strcat(input_buf, argv[i]);
+            strcat(buf, " ");
+            strcat(buf, argv[i]);
         }
-    }
-    else {
+    } else {
         strcpy(input_buf, "info");
     }
 
@@ -147,6 +174,11 @@ int main(int argc, char *argv[])
         print_usage();
         return 0;
     }
+    else if (strcmp(input_buf, "launch") == 0) {
+        // forcefully restart fmd
+        system("pgrep fmd && /usr/local/bin/fmc end && sleep 30; /usr/local/bin/fmd");
+        return 0;
+    } 
 
     struct addrinfo hints, *results, *p;
     int sock_fd;
@@ -187,29 +219,95 @@ int main(int argc, char *argv[])
     close(sock_fd);
 
     json_object *obj = json_tokener_parse(output_buf);
-    const char *status = json_object_get_string(json_object_object_get(obj, "status"));
-    if (strcmp(status, "error") == 0) {
-        printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
-    }
-    else {
-        printf("FMD %s - ", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"));
-        int c_id = json_object_get_int(json_object_object_get(obj, "channel"));
-        if (c_id < 0 || c_id >= channel_max || channels[c_id].id < 0) {
-            printf("未知兆赫\n");
-        }
-        else {
-            printf("%s\n", channels[c_id].name);
-        }
+    char *status = obj ? strdup(json_object_get_string(json_object_object_get(obj, "status"))) : "error", 
+         *channel = "", *artist = "", *title = "", pos[16] = "", len[16] = "", kbps[8] = "", *album = "", *cover = "", year[8] = "", *douban_url = "", *like = "";
 
+    if (strcmp(status, "error") != 0) {
+        char *chl = strdup(json_object_get_string(json_object_object_get(obj, "channel")));
+        long int cid;
+        if (strcmp(chl, local_channel) == 0) {
+            channel = get_local_channel_name();
+        } else {
+            // determining if it is an integer number
+            char *address;
+            cid = strtol(chl, &address, 10);
+            if (*address == '\0') {
+                // this is valid number
+                if (cid < 0 || cid >= channel_max || channels[cid].id < 0) {
+                    channel = "未知兆赫";
+                } else {
+                    channel = channels[cid].name;
+                }
+            } else {
+                channel = chl;
+            }
+        }
+        sprintf(kbps, "%d", json_object_get_int(json_object_object_get(obj, "kbps")));
         if (strcmp(status, "stop") != 0) {
-            char pos[16], len[16];
             time_str(json_object_get_int(json_object_object_get(obj, "pos")), pos);
             time_str(json_object_get_int(json_object_object_get(obj, "len")), len);
-            printf("%s%s - %s\n%s / %s\n",
-                    json_object_get_int(json_object_object_get(obj, "like"))? "[Like] ": "",
-                    json_object_get_string(json_object_object_get(obj, "artist")),
-                    json_object_get_string(json_object_object_get(obj, "title")), pos, len);
+            like = json_object_get_int(json_object_object_get(obj, "like")) ? "1" : "0";
+            artist = strdup(json_object_get_string(json_object_object_get(obj, "artist")));
+            title = strdup(json_object_get_string(json_object_object_get(obj, "title")));
+            album = strdup(json_object_get_string(json_object_object_get(obj, "album")));
+            sprintf(year, "%d", json_object_get_int(json_object_object_get(obj, "year")));
+            cover = strdup(json_object_get_string(json_object_object_get(obj, "cover")));
+            douban_url = strdup(json_object_get_string(json_object_object_get(obj, "url")));
         }
+    }
+
+    if (output_format[0] == '\0') {
+        if (strcmp(status, "error") == 0) {
+            if (obj)
+                printf("%s\n", json_object_get_string(json_object_object_get(obj, "message")));
+            else
+                printf("Unkown error with buf content %s\n", output_buf);
+        } else {
+            printf("FMD %s - %s / %s kbps\n", strcmp(status, "play") == 0? "Playing": (strcmp(status, "pause") == 0? "Paused": "Stopped"), channel, kbps);
+
+            if (strcmp(status, "stop") != 0) {
+                printf("%s%s - %s\n%s / %s\n", 
+                        like[0] == '1' ? "[Like] ": "", artist, title, 
+                        pos, len);
+            }
+        }
+    } else {
+        char info[1024], *arg = "";
+        int l = strlen(output_format) + 1;
+        // we must print out the information the user wants
+        // trim the space in front 
+        int i = 1, pi = 0;
+        while ( i < l) {
+            char ch = output_format[i++];
+            if (i < l - 1 && ch == '%') {
+                char spec = output_format[i++];
+                switch (spec) {
+                    case 'a': arg = artist; break;
+                    case 't': arg = title; break;
+                    case 'b': arg = album; break;
+                    case 'y': arg = year; break;
+                    case 'i': arg = cover; break;
+                    case 'd': arg = douban_url; break;
+                    case 'c': arg = channel; break;
+                    case 'p': arg = pos; break;
+                    case 'l': arg = len; break;
+                    case 'u': arg = status; break;
+                    case 'k': arg = kbps; break;
+                    case 'r': arg = like; break;
+                    case '%': arg = "%%"; break;
+                    default: 
+                        printf("Unknown specifier %c. Try help\n", spec);
+                        return 1;
+                }
+                // loop through the arg and copy the chars
+                while (*arg != '\0') {
+                    info[pi++] = *arg;
+                    arg++;
+                }
+            } else 
+                info[pi++] = ch;
+        }
+        printf(info);
     }
     json_object_put(obj);
 
