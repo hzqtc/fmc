@@ -17,7 +17,7 @@ typedef struct {
 } fm_channel_t;
 
 #define channel_max 128
-#define local_channel 999
+#define local_channel "999"
 fm_channel_t channels[channel_max];
 
 void read_channels()
@@ -67,8 +67,7 @@ void read_channels()
 }
 
 char *get_local_channel_name() {
-    char *login = "";
-    login = getlogin();
+    char *login = getlogin();
     if (!login)
         login = "Red-Heart";
     return login;
@@ -78,7 +77,7 @@ void print_channels()
 {
     int i;
     printf("%3s %s\n", "id", "name");
-    printf("%3d %s\n", local_channel, get_local_channel_name());
+    printf("%s %s\n", local_channel, get_local_channel_name());
     for (i = 0; i < channel_max; i++) {
         if (channels[i].id >= 0) {
             printf("%3d %s\n", channels[i].id, channels[i].name);
@@ -114,7 +113,7 @@ void print_usage()
            "       fmc rate          - mark current song as \"liked\"\n"
            "       fmc unrate        - unmark current song\n"
            "       fmc channels      - list all FM channels\n"
-           "       fmc website       - open the douban page using the browser defined in $BROWSER\n"
+           "       fmc webpage       - open the douban page using the browser defined in $BROWSER\n"
            "       fmc setch <id>    - set channel through channel's id\n"
            "       fmc kbps <kbps>   - set music quality to the specified kbps\n"
            "       fmc launch        - tell fmd to restart\n"
@@ -177,9 +176,7 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(input_buf, "launch") == 0) {
         // forcefully restart fmd
-        system("killall fmd;"
-               "sleep 1;"
-               "fmd;");
+        system("pgrep fmd && /usr/local/bin/fmc end && sleep 30; /usr/local/bin/fmd");
         return 0;
     } 
 
@@ -226,15 +223,24 @@ int main(int argc, char *argv[])
          *channel = "", *artist = "", *title = "", pos[16] = "", len[16] = "", kbps[8] = "", *album = "", *cover = "", year[8] = "", *douban_url = "", *like = "";
 
     if (strcmp(status, "error") != 0) {
-        int c_id = json_object_get_int(json_object_object_get(obj, "channel"));
-        if (c_id == local_channel) {
+        char *chl = strdup(json_object_get_string(json_object_object_get(obj, "channel")));
+        long int cid;
+        if (strcmp(chl, local_channel) == 0) {
             channel = get_local_channel_name();
-        }
-        else if (c_id < 0 || c_id >= channel_max || channels[c_id].id < 0) {
-            channel = "未知兆赫";
-        }
-        else {
-            channel = channels[c_id].name;
+        } else {
+            // determining if it is an integer number
+            char *address;
+            cid = strtol(chl, &address, 10);
+            if (*address == '\0') {
+                // this is valid number
+                if (cid < 0 || cid >= channel_max || channels[cid].id < 0) {
+                    channel = "未知兆赫";
+                } else {
+                    channel = channels[cid].name;
+                }
+            } else {
+                channel = chl;
+            }
         }
         sprintf(kbps, "%d", json_object_get_int(json_object_object_get(obj, "kbps")));
         if (strcmp(status, "stop") != 0) {

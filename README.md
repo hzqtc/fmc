@@ -22,14 +22,14 @@ Some more fine-grained controls are added (only showing new commands)
                                       %k -- kbps 
                                       %r -- rate (0 or 1) 
                                       %% -- a literal %
-                  fmc website       - open the douban page using the browser defined in $BROWSER
+                  fmc webpage       - open the douban page using the browser defined in $BROWSER
                   fmc kbps <kbps>   - set music quality to the specified kbps
                   fmc launch        - tell fmd to restart
 
 
 `launch` command will forcefully kill all fmd instances and restart a new one (I know this is bad practice for a client, but I find it useful from time to time). 
 
-For `website` and `kbps` commands you can refer to [FMD](https://github.com/lynnard/fmd)
+For `webpage` and `kbps` commands you can refer to [FMD](https://github.com/lynnard/fmd)
 
 `info` command now supports an optional format argument that can contain specifiers related to the current player information. An example use:
 
