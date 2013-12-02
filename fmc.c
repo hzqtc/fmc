@@ -16,7 +16,7 @@ typedef struct {
     char name[32];
 } fm_channel_t;
 
-#define channel_max 128
+#define channel_max 1024
 fm_channel_t channels[channel_max];
 
 void read_channels()
